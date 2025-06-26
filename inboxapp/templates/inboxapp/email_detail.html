@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ email.subject }} - Email Detail</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .email-header {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .attachment-item {
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #f8f9fa;
+        }
+        .attachment-icon {
+            font-size: 1.5em;
+            margin-right: 10px;
+        }
+        .email-body {
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+        }
+        .image-preview {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <!-- Back Button -->
+                <div class="mb-3">
+                    <a href="{% url 'inbox' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Inbox
+                    </a>
+                </div>
+
+                <!-- Email Header -->
+                <div class="card mb-4">
+                    <div class="card-body email-header">
+                        <h4 class="card-title">{{ email.subject }}</h4>
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <strong>From:</strong> 
+                                {% if email.sender_name %}
+                                    {{ email.sender_name }} &lt;{{ email.sender }}&gt;
+                                {% else %}
+                                    {{ email.sender }}
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>To:</strong> {{ email.recipient }}
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-2">
+                            <div class="col-md-6">
+                                <strong>Date:</strong> {{ email.date_received|date:"F d, Y g:i A" }}
+                            </div>
+                            <div class="col-md-6">
+                                {% if attachments %}
+                                    <strong>Attachments:</strong> {{ attachments.count }} file{{ attachments.count|pluralize }}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attachments -->
+                {% if attachments %}
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5><i class="fas fa-paperclip"></i> Attachments ({{ attachments.count }})</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% for attachment in attachments %}
+                                    <div class="col-md-6 col-lg-4 mb-3">
+                                        <div class="attachment-item">
+                                            <div class="d-flex align-items-center">
+                                                {% if attachment.is_image %}
+                                                    <i class="fas fa-image attachment-icon text-success"></i>
+                                                {% elif attachment.is_pdf %}
+                                                    <i class="fas fa-file-pdf attachment-icon text-danger"></i>
+                                                {% else %}
+                                                    <i class="fas fa-file attachment-icon text-secondary"></i>
+                                                {% endif %}
+                                                
+                                                <div class="flex-grow-1">
+                                                    <div class="fw-bold">{{ attachment.filename }}</div>
+                                                    <small class="text-muted">
+                                                        {{ attachment.file_size|filesizeformat }} - {{ attachment.content_type }}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Image Preview -->
+                                            {% if attachment.is_image %}
+                                                <div class="mt-2">
+                                                    <img src="{{ attachment.file_path.url }}" 
+                                                         alt="{{ attachment.filename }}" 
+                                                         class="image-preview img-fluid">
+                                                </div>
+                                            {% endif %}
+                                            
+                                            <div class="mt-2">
+                                                <a href="{% url 'download_attachment' attachment.id %}" 
+                                                   class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-download"></i> Download
+                                                </a>
+                                                
+                                                {% if attachment.is_image %}
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary ms-2" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#imageModal{{ attachment.id }}">
+                                                        <i class="fas fa-eye"></i> View
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- Email Body -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-envelope-open"></i> Message Content</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if email.body_html %}
+                            <div class="email-body">
+                                {{ email.body_html|safe }}
+                            </div>
+                        {% elif email.body_text %}
+                            <div class="email-body">
+                                <pre style="white-space: pre-wrap; font-family: inherit;">{{ email.body_text }}</pre>
+                            </div>
+                        {% else %}
+                            <div class="text-center text-muted p-4">
+                                <i class="fas fa-envelope fa-2x mb-2"></i>
+                                <p>No message content available</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Modals -->
+    {% for attachment in attachments %}
+        {% if attachment.is_image %}
+            <div class="modal fade" id="imageModal{{ attachment.id }}" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">{{ attachment.filename }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body text-center">
+                            <img src="{{ attachment.file_path.url }}" 
+                                 alt="{{ attachment.filename }}" 
+                                 class="img-fluid">
+                        </div>
+                        <div class="modal-footer">
+                            <a href="{% url 'download_attachment' attachment.id %}" 
+                               class="btn btn-primary">
+                                <i class="fas fa-download"></i> Download
+                            </a>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% endfor %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
