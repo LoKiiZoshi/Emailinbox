@@ -1,7 +1,4 @@
 from django.db import models
-
-# Create your models here.
-from django.db import models
 from django.utils import timezone
 
 class EmailAccount(models.Model):
@@ -16,7 +13,7 @@ class EmailAccount(models.Model):
         return f"{self.name} ({self.email})"
 
 class Email(models.Model):
-    account = models.ForeignKey(EmailAccount, on_delete=models.CASCADE)
+    account = models.ForeignKey(EmailAccount, on_delete=models.CASCADE, related_name='emails')
     subject = models.CharField(max_length=500)
     sender = models.EmailField()
     sender_name = models.CharField(max_length=200, blank=True)
